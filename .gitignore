@@ -1,0 +1,21 @@
+# 专属工具箱 (Venv)
+venv/
+.venv/
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 数据库
+db.sqlite3
+*.sqlite3
+
+# PyCharm/VSCode 配置文件
+.idea/
+.vscode/
+
+# 用户上传的文件 (绝不能上传到 Git)
+media/
+
+# 操作系统文件
+.DS_Store
