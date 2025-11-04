@@ -6,36 +6,70 @@ from .models import (
     Module,
     Lesson,
     Enrollment,
-    LessonProgress
+    LessonProgress,
+    Category,  # <-- 【【【新增】】】
+    InstructorApplication  # <-- 【【【新增】】】
 )
 
+
 # -----------------------------------------------------------------------------
-# 1. 自定义 CustomUser 在 admin 中的显示
+# 1. 自定义 CustomUser Admin (不变)
 # -----------------------------------------------------------------------------
-# 我们需要告诉 admin, "role" 和 "bio" 字段也需要显示
 class CustomUserAdmin(UserAdmin):
-    # UserAdmin.fieldsets 是 Django 原本就定义好的一堆字段
-    # 我们要做的就是找到 "Personal info" 那一组, 把我们的新字段加进去
     fieldsets = UserAdmin.fieldsets + (
         ('自定义字段', {'fields': ('role', 'bio')}),
     )
-    # 也要把新字段加到 "add_fieldsets", 这样 "创建用户" 时也能看到
     add_fieldsets = UserAdmin.add_fieldsets + (
         ('自定义字段', {'fields': ('role', 'bio')}),
     )
-    # 也要在 "list_display" (列表页) 中添加, 这样能一眼看到
     list_display = ['username', 'email', 'first_name', 'last_name', 'is_staff', 'role']
 
-# -----------------------------------------------------------------------------
-# 2. 【核心】把你的所有模型“注册”到 admin 后台
-# -----------------------------------------------------------------------------
 
-# 告诉 admin: "请使用我们上面定义的 CustomUserAdmin 规则来管理 CustomUser"
+# -----------------------------------------------------------------------------
+# 2. 自定义 Category Admin (让 slug 自动填充)
+# -----------------------------------------------------------------------------
+class CategoryAdmin(admin.ModelAdmin):
+    prepopulated_fields = {'slug': ('name',)}
+    list_display = ['name', 'slug']
+
+
+# -----------------------------------------------------------------------------
+# 3. 自定义 InstructorApplication Admin (用于审批)
+# -----------------------------------------------------------------------------
+@admin.register(InstructorApplication)
+class InstructorApplicationAdmin(admin.ModelAdmin):
+    list_display = ['user', 'status', 'created_at']
+    list_filter = ['status']
+    search_fields = ['user__username']
+    actions = ['approve_applications', 'reject_applications']
+
+    # 【核心】: 审批动作
+    def approve_applications(self, request, queryset):
+        for application in queryset.filter(status=InstructorApplication.STATUS_PENDING):
+            application.status = InstructorApplication.STATUS_APPROVED
+            application.save()
+
+            # 将用户角色升级为讲师
+            user = application.user
+            user.role = CustomUser.ROLE_INSTRUCTOR
+            user.save()
+
+    approve_applications.short_description = "批准所选申请并设为讲师"
+
+    def reject_applications(self, request, queryset):
+        queryset.update(status=InstructorApplication.STATUS_REJECTED)
+
+    reject_applications.short_description = "拒绝所选申请"
+
+
+# -----------------------------------------------------------------------------
+# 4. 注册所有模型
+# -----------------------------------------------------------------------------
 admin.site.register(CustomUser, CustomUserAdmin)
-
-# 告诉 admin: "请用默认的样式来管理这些模型"
+admin.site.register(Category, CategoryAdmin)  # <-- 【【【新增】】】
 admin.site.register(Course)
 admin.site.register(Module)
 admin.site.register(Lesson)
 admin.site.register(Enrollment)
 admin.site.register(LessonProgress)
+# InstructorApplication 已通过 @admin.register 注册
