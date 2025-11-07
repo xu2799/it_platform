@@ -1,22 +1,29 @@
 from rest_framework import serializers
-from .models import CustomUser, Course, Module, Lesson, Category, InstructorApplication
+from .models import (
+    CustomUser, Course, Module, Lesson, Category,
+    InstructorApplication, Comment
+)
 
 
 # -----------------------------------------------------------------------------
 # 打包器 1: 用户
 # -----------------------------------------------------------------------------
 class UserSerializer(serializers.ModelSerializer):
-    # (来自之前的修复: 包含 'enrollments' 字段)
     enrollments = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    favorited_courses = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'bio', 'role', 'enrollments']
+        fields = [
+            'id', 'username', 'email', 'bio', 'role',
+            'enrollments',
+            'favorited_courses'
+        ]
         read_only_fields = ['role', 'username']
 
 
 # -----------------------------------------------------------------------------
-# 【【【新增】】】: 课程分类打包器
+# 打包器 2: 课程分类 (不变)
 # -----------------------------------------------------------------------------
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,7 +32,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 # -----------------------------------------------------------------------------
-# 打包器 2, 3: 课程内容
+# 打包器 3, 4: 课程内容 (不变)
 # -----------------------------------------------------------------------------
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
@@ -51,12 +58,12 @@ class ModuleSerializer(serializers.ModelSerializer):
 
 
 # -----------------------------------------------------------------------------
-# 打包器 4: 课程 (公开列表) - 【【已修改】】
+# 打包器 5: 课程 (公开列表) - 【【【已修改】】】
 # -----------------------------------------------------------------------------
 class CourseListSerializer(serializers.ModelSerializer):
     instructor = UserSerializer(read_only=True)
-    # 【【【修改】】】: 添加 category 字段
     category = CategorySerializer(read_only=True)
+    like_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
@@ -64,22 +71,29 @@ class CourseListSerializer(serializers.ModelSerializer):
             'id',
             'title',
             'description',
-            'price',
+            # 'price', # <-- 【【【已移除】】】
             'created_at',
             'instructor',
             'cover_image',
-            'category'  # <-- 【【【修改】】】
+            'category',
+            'like_count'
         ]
+
+    def get_like_count(self, obj):
+        return obj.likes.count()
 
 
 # -----------------------------------------------------------------------------
-# 打包器 5: 课程 (完整详情) - 【【已修改】】
+# 打包器 6: 课程 (完整详情) - 【【【已修改】】】
 # -----------------------------------------------------------------------------
 class CourseDetailSerializer(serializers.ModelSerializer):
     modules = ModuleSerializer(many=True, read_only=True)
     instructor = UserSerializer(read_only=True)
-    # 【【【修改】】】: 添加 category 字段
     category = CategorySerializer(read_only=True)
+
+    like_count = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
@@ -87,34 +101,60 @@ class CourseDetailSerializer(serializers.ModelSerializer):
             'id',
             'title',
             'description',
-            'price',
+            # 'price', # <-- 【【【已移除】】】
             'created_at',
             'instructor',
             'modules',
             'cover_image',
-            'category'  # <-- 【【【修改】】】
+            'category',
+            'like_count',
+            'is_liked',
+            'is_favorited'
         ]
 
+    def get_like_count(self, obj):
+        return obj.likes.count()
+
+    def get_is_liked(self, obj):
+        user = self.context['request'].user
+        if user.is_authenticated:
+            return obj.likes.filter(pk=user.pk).exists()
+        return False
+
+    def get_is_favorited(self, obj):
+        user = self.context['request'].user
+        if user.is_authenticated:
+            return user.favorited_courses.filter(pk=obj.pk).exists()
+        return False
+
 
 # -----------------------------------------------------------------------------
-# 【【【新增】】】: 讲师申请打包器
+# 打包器 7: 讲师申请 (不变)
 # -----------------------------------------------------------------------------
 class InstructorApplicationSerializer(serializers.ModelSerializer):
-    # 在“只读”时 (GET), 嵌套显示申请人信息
     user = UserSerializer(read_only=True)
 
     class Meta:
         model = InstructorApplication
         fields = ['id', 'user', 'justification', 'status', 'created_at']
-        # 'status' 和 'user' 应该是只读的，除非是管理员
         read_only_fields = ['status', 'created_at']
 
     def validate(self, data):
-        # 确保申请人是 'student'
         request = self.context['request']
         if request.user.role != CustomUser.ROLE_STUDENT:
             raise serializers.ValidationError("只有学生才能申请成为讲师。")
-        # 确保没有重复申请
         if InstructorApplication.objects.filter(user=request.user).exists():
             raise serializers.ValidationError("你已经提交过申请，请勿重复提交。")
         return data
+
+
+# -----------------------------------------------------------------------------
+# 打包器 8: 评论 (不变)
+# -----------------------------------------------------------------------------
+class CommentSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'user', 'lesson', 'content', 'created_at']
+        read_only_fields = ['user', 'created_at']

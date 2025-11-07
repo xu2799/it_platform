@@ -63,7 +63,7 @@ class Migration(migrations.Migration):
                 ('title', models.CharField(max_length=255, verbose_name='课程标题')),
                 ('description', models.TextField(verbose_name='课程描述')),
                 ('cover_image', models.ImageField(blank=True, null=True, upload_to='course_covers/', verbose_name='课程封面图')),
-                ('price', models.DecimalField(decimal_places=2, default=0.0, max_digits=10, verbose_name='价格')),
+                # ('price', models.DecimalField(decimal_places=2, default=0.0, max_digits=10, verbose_name='价格')), # <-- 【【【已移除】】】
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('category', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='courses', to='core.category', verbose_name='课程分类')),

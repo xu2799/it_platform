@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .views import CreateCheckoutSessionView, StripeWebhookView, RegisterView
+from .views import RegisterView
 
 router = DefaultRouter()
 # 1. 课程路由
@@ -10,12 +10,12 @@ router.register(r'courses', views.CourseViewSet, basename='course')
 router.register(r'modules', views.ModuleViewSet, basename='module')
 # 3. 课时路由
 router.register(r'lessons', views.LessonViewSet, basename='lesson')
-
-# 4. 【【【新增】】】: 课程分类路由
+# 4. 课程分类路由
 router.register(r'categories', views.CategoryViewSet, basename='category')
-# 5. 【【【新增】】】: 讲师申请路由
+# 5. 讲师申请路由
 router.register(r'applications', views.InstructorApplicationViewSet, basename='application')
-
+# 6. 【【【新增】】】: 评论路由
+router.register(r'comments', views.CommentViewSet, basename='comment')
 
 urlpatterns = [
     # 把 router 管理的所有网址包含进来
@@ -23,10 +23,17 @@ urlpatterns = [
 
     # 用户“我”的网址
     path('users/me/', views.UserView.as_view(), name='user-me'),
-    # 支付
-    path('checkout/', CreateCheckoutSessionView.as_view(), name='checkout'),
-    # Webhook
-    path('webhook/', StripeWebhookView.as_view(), name='stripe-webhook'),
+
+    # 讲师 "我的课程" 网址
+    path('instructor/courses/', views.InstructorCourseListView.as_view(), name='instructor-courses'),
+
+    # 点赞 API
+    path('courses/<int:course_id>/toggle-like/', views.ToggleLikeView.as_view(), name='toggle-like'),
+
+    # 【【【新增】】】: 收藏 API
+    path('courses/<int:course_id>/toggle-favorite/', views.ToggleFavoriteView.as_view(), name='toggle-favorite'),
+    path('favorites/', views.FavoriteCourseListView.as_view(), name='favorite-courses'),
+
     # 注册
     path('register/', RegisterView.as_view(), name='register'),
 ]

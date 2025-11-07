@@ -156,13 +156,7 @@ CELERY_ACCEPT_CONTENT = ['json']
 
 
 # --- 13. Stripe 支付配置 ---
-# 【【警告】】: 请从您之前的文件中，把您的3个 Stripe 密钥复制粘贴回这里！
-STRIPE_PUBLISHABLE_KEY = "pk_test_51SOy8PRr0O6RH57lgGmy3JjC6nqC7Ul3ozcuX60IH7b2kmsB89xJugNlivPWSLCJivE7FpteVsXK5VQ33UZuCnDc000rik5PRH"
-STRIPE_SECRET_KEY = "sk_test_51SOy8PRr0O6RH57lffl1niV4FjjwRzH1UlDuRs9axN57H3KYXFEZ6UTh9TZA0emKRugtcjZbVKV57zgmGROKROor00k95TP7P0"
-STRIPE_WEBHOOK_SECRET = "whsec_...PASTE_YOUR_KEY_HERE..."
-
-STRIPE_SUCCESS_URL = 'http://localhost:5173/payment/success'
-STRIPE_CANCEL_URL = 'http://localhost:5173/payment/cancel'
+# 【【【修改】】】: 所有 Stripe 密钥已被移除
 
 
 # --- 14. 文件上传大小限制 ---
