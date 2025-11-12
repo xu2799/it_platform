@@ -95,6 +95,23 @@ class Course(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        # ... (indexes)
+
+    # (price 字段已被删除)
+
+    # 【【【新增】】】: 点赞功能
+    likes = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='liked_courses',
+        blank=True,
+        verbose_name="点赞用户"
+    )
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        ordering = ['-created_at']
         indexes = [
             models.Index(fields=['-created_at']),
             models.Index(fields=['category', '-created_at']),
