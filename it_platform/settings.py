@@ -11,15 +11,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- 1. 核心安全设置 ---
 
-# 【【警告】】: 请从您之前的文件中，把您的 SECRET_KEY 复制粘贴回这里！
-# （例如：SECRET_KEY = 'django-insecure-_#w=dw-...'）
+# 安全配置：从环境变量读取SECRET_KEY，生产环境必须设置
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-YOUR_SECRET_KEY_GOES_HERE')
 
-# 开发模式
-DEBUG = True
+# 开发模式：生产环境必须设置为False
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-# 允许您的前端主机访问
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+# 允许的主机：生产环境需要配置实际域名
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # --- 2. 应用程序定义 ---
@@ -130,10 +129,18 @@ AUTH_USER_MODEL = 'core.CustomUser'
 
 
 # --- 10. 跨域许可 (CORS) ---
+# 开发环境允许的源
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+
+# 从环境变量读取额外的允许源（生产环境使用）
+if os.getenv('CORS_ALLOWED_ORIGINS'):
+    CORS_ALLOWED_ORIGINS.extend(os.getenv('CORS_ALLOWED_ORIGINS').split(','))
+
+# 安全配置：生产环境应该限制更严格的CORS设置
+CORS_ALLOW_CREDENTIALS = True
 
 
 # --- 11. DRF (REST Framework) ---
@@ -144,7 +151,12 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
-    ]
+    ],
+    # 分页配置：避免返回过多数据
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+    # 异常处理
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
 }
 
 # --- 12. Celery 和 Redis (异步任务) ---
@@ -162,3 +174,47 @@ CELERY_ACCEPT_CONTENT = ['json']
 # --- 14. 文件上传大小限制 ---
 FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800  # 50MB
+
+# --- 15. 安全中间件配置 ---
+if not DEBUG:
+    # 生产环境安全配置
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+
+# --- 16. 日志配置 ---
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'core': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}

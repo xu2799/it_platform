@@ -244,20 +244,29 @@ class ToggleLikeView(APIView):
 
     def post(self, request, course_id):
         try:
-            course = Course.objects.get(pk=course_id)
+            # 使用 prefetch_related 优化查询
+            course = Course.objects.prefetch_related('likes').get(pk=course_id)
             user = request.user
-            if user in course.likes.all():
+            
+            # 检查用户是否已点赞
+            is_liked = course.likes.filter(pk=user.pk).exists()
+            
+            if is_liked:
                 course.likes.remove(user)
                 liked = False
             else:
                 course.likes.add(user)
                 liked = True
+            
+            # 重新获取点赞数量
+            like_count = course.likes.count()
+            
             return Response(
-                {'liked': liked, 'count': course.likes.count()},
+                {'liked': liked, 'count': like_count},
                 status=status.HTTP_200_OK
             )
         except Course.DoesNotExist:
-            return Response({'detail': '课程不存在'}, status=status.HTTP_44_NOT_FOUND)
+            return Response({'detail': '课程不存在'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class ToggleFavoriteView(APIView):

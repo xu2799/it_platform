@@ -65,7 +65,7 @@ class Category(models.Model):
 # 蓝图 3: 课程模型 (Course) - 【【【已修改】】】
 # -----------------------------------------------------------------------------
 class Course(models.Model):
-    title = models.CharField(max_length=255, verbose_name="课程标题")
+    title = models.CharField(max_length=255, verbose_name="课程标题", db_index=True)
     description = models.TextField(verbose_name="课程描述")
     cover_image = models.ImageField(
         upload_to='course_covers/',
@@ -79,19 +79,38 @@ class Course(models.Model):
         null=True,
         blank=True,
         related_name='courses',
-        verbose_name="课程分类"
+        verbose_name="课程分类",
+        db_index=True
     )
     instructor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         related_name='courses_taught',
-        verbose_name="授课讲师"
+        verbose_name="授课讲师",
+        db_index=True
     )
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # 【【【Price 字段已从此移除】】】
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['category', '-created_at']),
+            models.Index(fields=['instructor', '-created_at']),
+        ]
+
+    # 【【【修复】】】: 你的数据库 (db.sqlite3) 似乎仍包含 price 字段
+    # 并且要求它不能为空 (NOT NULL)。
+    # 我们将其加回模型, 并设为默认 0.0, 以解决 "NOT NULL constraint failed" 错误。
+    # 这使模型与你当前的数据库状态保持一致。
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.0,
+        verbose_name="价格"
+    )
 
     # 【【【新增】】】: 点赞功能
     likes = models.ManyToManyField(
@@ -109,12 +128,15 @@ class Course(models.Model):
 # 蓝图 4: 章节模型 (Module) - (不变)
 # -----------------------------------------------------------------------------
 class Module(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='modules', verbose_name="所属课程")
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='modules', verbose_name="所属课程", db_index=True)
     title = models.CharField(max_length=255, verbose_name="章节标题")
-    order = models.PositiveIntegerField(default=0, verbose_name="章节顺序")
+    order = models.PositiveIntegerField(default=0, verbose_name="章节顺序", db_index=True)
 
     class Meta:
         ordering = ['order']
+        indexes = [
+            models.Index(fields=['course', 'order']),
+        ]
 
     def __str__(self):
         return f"{self.course.title} - {self.title}"
@@ -130,10 +152,10 @@ class Lesson(models.Model):
         (LESSON_VIDEO, '视频'),
         (LESSON_TEXT, '文本'),
     ]
-    module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name='lessons', verbose_name="所属章节")
+    module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name='lessons', verbose_name="所属章节", db_index=True)
     title = models.CharField(max_length=255, verbose_name="课时标题")
     lesson_type = models.CharField(max_length=10, choices=LESSON_TYPE_CHOICES, default=LESSON_TEXT,
-                                   verbose_name="课时类型")
+                                   verbose_name="课时类型", db_index=True)
     video_mp4_file = models.FileField(
         upload_to='lesson_videos_mp4/',
         null=True,
@@ -142,10 +164,14 @@ class Lesson(models.Model):
     )
     video_m3u8_url = models.URLField(blank=True, null=True, verbose_name="HLS视频URL")
     content = models.TextField(blank=True, verbose_name="文本内容")
-    order = models.PositiveIntegerField(default=0, verbose_name="课时顺序")
+    order = models.PositiveIntegerField(default=0, verbose_name="课时顺序", db_index=True)
 
     class Meta:
         ordering = ['order']
+        indexes = [
+            models.Index(fields=['module', 'order']),
+            models.Index(fields=['lesson_type']),
+        ]
 
     def __str__(self):
         return self.title
@@ -156,12 +182,16 @@ class Lesson(models.Model):
 # -----------------------------------------------------------------------------
 class Enrollment(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='enrollments',
-                                verbose_name="学生")
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments', verbose_name="课程")
-    enrolled_at = models.DateTimeField(auto_now_add=True, verbose_name="注册时间")
+                                verbose_name="学生", db_index=True)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments', verbose_name="课程", db_index=True)
+    enrolled_at = models.DateTimeField(auto_now_add=True, verbose_name="注册时间", db_index=True)
 
     class Meta:
         unique_together = ('student', 'course')
+        indexes = [
+            models.Index(fields=['student', '-enrolled_at']),
+            models.Index(fields=['course', '-enrolled_at']),
+        ]
 
     def __str__(self):
         return f"{self.student.username} 注册了 {self.course.title}"
@@ -172,12 +202,16 @@ class Enrollment(models.Model):
 # -----------------------------------------------------------------------------
 class LessonProgress(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='progress',
-                                verbose_name="学生")
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='progress', verbose_name="课时")
-    is_completed = models.BooleanField(default=False, verbose_name="是否完成")
+                                verbose_name="学生", db_index=True)
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='progress', verbose_name="课时", db_index=True)
+    is_completed = models.BooleanField(default=False, verbose_name="是否完成", db_index=True)
 
     class Meta:
         unique_together = ('student', 'lesson')
+        indexes = [
+            models.Index(fields=['student', 'is_completed']),
+            models.Index(fields=['lesson', 'is_completed']),
+        ]
 
     def __str__(self):
         return f"{self.student.username} - {self.lesson.title}"
@@ -218,14 +252,18 @@ class InstructorApplication(models.Model):
 # 【【【新增】】】: 蓝图 9: 评论模型 (Comment)
 # -----------------------------------------------------------------------------
 class Comment(models.Model):
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='comments', verbose_name="所属课时")
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='comments', verbose_name="所属课时", db_index=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comments',
-                             verbose_name="评论用户")
+                             verbose_name="评论用户", db_index=True)
     content = models.TextField(verbose_name="评论内容")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="评论时间")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="评论时间", db_index=True)
 
     class Meta:
         ordering = ['-created_at']  # 按时间倒序
+        indexes = [
+            models.Index(fields=['lesson', '-created_at']),
+            models.Index(fields=['user', '-created_at']),
+        ]
 
     def __str__(self):
         return f"{self.user.username} 对 {self.lesson.title} 的评论"
