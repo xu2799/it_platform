@@ -1,3 +1,4 @@
+# core/models.py (正确、干净的版本)
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
@@ -5,7 +6,7 @@ from django.utils.text import slugify
 
 
 # -----------------------------------------------------------------------------
-# 蓝图 1: 自定义用户模型 (CustomUser) - 【【【已修改】】】
+# 蓝图 1: 自定义用户模型 (CustomUser)
 # -----------------------------------------------------------------------------
 class CustomUser(AbstractUser):
     ROLE_STUDENT = 'student'
@@ -24,7 +25,7 @@ class CustomUser(AbstractUser):
     )
     bio = models.TextField(blank=True, verbose_name="个人简介")
 
-    # 【【【新增 收藏 功能】】】
+    # 收藏 功能
     favorited_courses = models.ManyToManyField(
         'Course',  # 使用字符串 'Course' 避免 import 顺序问题
         blank=True,
@@ -37,7 +38,7 @@ class CustomUser(AbstractUser):
 
 
 # -----------------------------------------------------------------------------
-# 蓝图 2: 课程分类模型 (Category) - (不变)
+# 蓝图 2: 课程分类模型 (Category)
 # -----------------------------------------------------------------------------
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True, verbose_name="分类名称")
@@ -62,7 +63,7 @@ class Category(models.Model):
 
 
 # -----------------------------------------------------------------------------
-# 蓝图 3: 课程模型 (Course) - 【【【已修改】】】
+# 蓝图 3: 课程模型 (Course) - 【【【已修复】】】
 # -----------------------------------------------------------------------------
 class Course(models.Model):
     title = models.CharField(max_length=255, verbose_name="课程标题", db_index=True)
@@ -93,22 +94,15 @@ class Course(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        ordering = ['-created_at']
-        # ... (indexes)
+    # (price 字段已彻底移除, 重复的 Meta 和 likes 也已移除)
 
-    # (price 字段已被删除)
-
-    # 【【【新增】】】: 点赞功能
+    # 点赞功能
     likes = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         related_name='liked_courses',
         blank=True,
         verbose_name="点赞用户"
     )
-
-    def __str__(self):
-        return self.title
 
     class Meta:
         ordering = ['-created_at']
@@ -118,31 +112,12 @@ class Course(models.Model):
             models.Index(fields=['instructor', '-created_at']),
         ]
 
-    # 【【【修复】】】: 你的数据库 (db.sqlite3) 似乎仍包含 price 字段
-    # 并且要求它不能为空 (NOT NULL)。
-    # 我们将其加回模型, 并设为默认 0.0, 以解决 "NOT NULL constraint failed" 错误。
-    # 这使模型与你当前的数据库状态保持一致。
-    price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=0.0,
-        verbose_name="价格"
-    )
-
-    # 【【【新增】】】: 点赞功能
-    likes = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        related_name='liked_courses',
-        blank=True,
-        verbose_name="点赞用户"
-    )
-
     def __str__(self):
         return self.title
 
 
 # -----------------------------------------------------------------------------
-# 蓝图 4: 章节模型 (Module) - (不变)
+# 蓝图 4: 章节模型 (Module)
 # -----------------------------------------------------------------------------
 class Module(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='modules', verbose_name="所属课程", db_index=True)
@@ -160,7 +135,7 @@ class Module(models.Model):
 
 
 # -----------------------------------------------------------------------------
-# 蓝图 5: 课时模型 (Lesson) - (不变)
+# 蓝图 5: 课时模型 (Lesson)
 # -----------------------------------------------------------------------------
 class Lesson(models.Model):
     LESSON_VIDEO = 'video'
@@ -195,7 +170,7 @@ class Lesson(models.Model):
 
 
 # -----------------------------------------------------------------------------
-# 蓝图 6: 注册 (购买) 模型 (Enrollment) - (不变)
+# 蓝图 6: 注册 (购买) 模型 (Enrollment)
 # -----------------------------------------------------------------------------
 class Enrollment(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='enrollments',
@@ -215,7 +190,7 @@ class Enrollment(models.Model):
 
 
 # -----------------------------------------------------------------------------
-# 蓝图 7: 学习进度模型 (LessonProgress) - (不变)
+# 蓝图 7: 学习进度模型 (LessonProgress)
 # -----------------------------------------------------------------------------
 class LessonProgress(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='progress',
@@ -235,7 +210,7 @@ class LessonProgress(models.Model):
 
 
 # -----------------------------------------------------------------------------
-# 蓝图 8: 讲师申请模型 (InstructorApplication) - (不变)
+# 蓝图 8: 讲师申请模型 (InstructorApplication)
 # -----------------------------------------------------------------------------
 class InstructorApplication(models.Model):
     STATUS_PENDING = 'pending'
@@ -266,7 +241,7 @@ class InstructorApplication(models.Model):
 
 
 # -----------------------------------------------------------------------------
-# 【【【新增】】】: 蓝图 9: 评论模型 (Comment)
+# 蓝图 9: 评论模型 (Comment)
 # -----------------------------------------------------------------------------
 class Comment(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='comments', verbose_name="所属课时", db_index=True)
