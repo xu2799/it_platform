@@ -44,6 +44,11 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Course.objects.all().order_by('-created_at')
+
+        # 【【【修复 500 错误 / N+1 问题】】】
+        # 预先获取 category, instructor (select_related) 和 likes (prefetch_related)
+        queryset = queryset.select_related('instructor', 'category').prefetch_related('likes')
+
         category_slug = self.request.query_params.get('category')
         if category_slug:
             queryset = queryset.filter(category__slug=category_slug)
@@ -64,7 +69,6 @@ class CourseViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
-    # 【【【已修改：移除了 Price】】】
     def create(self, request, *args, **kwargs):
         if not request.user.role in [CustomUser.ROLE_INSTRUCTOR, CustomUser.ROLE_ADMIN]:
             return Response(
@@ -91,7 +95,6 @@ class CourseViewSet(viewsets.ModelViewSet):
                 instructor=request.user,
                 cover_image=cover_image_file,
                 category=category
-                # (Price 已移除)
             )
             serializer = self.get_serializer(course)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -238,6 +241,21 @@ class CommentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    # 【【【修复评论数据不完整问题】】】
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        # 关键步骤：使用创建的实例，再次序列化以确保嵌套字段被包含
+        response_serializer = CommentSerializer(
+            serializer.instance,
+            context={'request': request}
+        )
+
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 
 class ToggleLikeView(APIView):
     permission_classes = [IsAuthenticated]
@@ -247,20 +265,20 @@ class ToggleLikeView(APIView):
             # 使用 prefetch_related 优化查询
             course = Course.objects.prefetch_related('likes').get(pk=course_id)
             user = request.user
-            
+
             # 检查用户是否已点赞
             is_liked = course.likes.filter(pk=user.pk).exists()
-            
+
             if is_liked:
                 course.likes.remove(user)
                 liked = False
             else:
                 course.likes.add(user)
                 liked = True
-            
+
             # 重新获取点赞数量
             like_count = course.likes.count()
-            
+
             return Response(
                 {'liked': liked, 'count': like_count},
                 status=status.HTTP_200_OK
