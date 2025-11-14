@@ -14,7 +14,7 @@ router.register(r'lessons', views.LessonViewSet, basename='lesson')
 router.register(r'categories', views.CategoryViewSet, basename='category')
 # 5. 讲师申请路由
 router.register(r'applications', views.InstructorApplicationViewSet, basename='application')
-# 6. 【【【新增】】】: 评论路由
+# 6. 评论路由
 router.register(r'comments', views.CommentViewSet, basename='comment')
 
 urlpatterns = [
@@ -27,12 +27,10 @@ urlpatterns = [
     # 讲师 "我的课程" 网址
     path('instructor/courses/', views.InstructorCourseListView.as_view(), name='instructor-courses'),
 
-    # 点赞 API
-    path('courses/<int:course_id>/toggle-like/', views.ToggleLikeView.as_view(), name='toggle-like'),
-
-    # 【【【新增】】】: 收藏 API
-    path('courses/<int:course_id>/toggle-favorite/', views.ToggleFavoriteView.as_view(), name='toggle-favorite'),
-    path('favorites/', views.FavoriteCourseListView.as_view(), name='favorite-courses'),
+    # --- 【【【已删除】】】 ---
+    # 点赞 API 已被移除
+    # 收藏 API 已被移除
+    # 收藏列表 API 已被移除
 
     # 注册
     path('register/', RegisterView.as_view(), name='register'),

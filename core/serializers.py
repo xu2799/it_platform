@@ -6,18 +6,19 @@ from .models import (
 
 
 # -----------------------------------------------------------------------------
-# 打包器 1: 用户
+# 打包器 1: 用户 - 【【【已修改】】】
 # -----------------------------------------------------------------------------
 class UserSerializer(serializers.ModelSerializer):
     enrollments = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
-    favorited_courses = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+
+    # favorited_courses 字段已被移除
 
     class Meta:
         model = CustomUser
         fields = [
             'id', 'username', 'email', 'bio', 'role',
             'enrollments',
-            'favorited_courses'
+            # 'favorited_courses' # <-- 已移除
         ]
         read_only_fields = ['role', 'username']
 
@@ -53,7 +54,7 @@ class LessonSerializer(serializers.ModelSerializer):
             'video_m3u8_url',
             'order'
         ]
-    
+
     def validate_title(self, value):
         """验证课时标题"""
         if not value or not value.strip():
@@ -69,7 +70,7 @@ class ModuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Module
         fields = ['id', 'course', 'title', 'order', 'lessons']
-    
+
     def validate_title(self, value):
         """验证章节标题"""
         if not value or not value.strip():
@@ -85,7 +86,8 @@ class ModuleSerializer(serializers.ModelSerializer):
 class CourseListSerializer(serializers.ModelSerializer):
     instructor = UserSerializer(read_only=True)
     category = CategorySerializer(read_only=True)
-    like_count = serializers.SerializerMethodField()
+
+    # like_count 字段已被移除
 
     class Meta:
         model = Course
@@ -97,14 +99,10 @@ class CourseListSerializer(serializers.ModelSerializer):
             'instructor',
             'cover_image',
             'category',
-            'like_count'
+            # 'like_count' # <-- 已移除
         ]
 
-    def get_like_count(self, obj):
-        # 使用已预取的likes关系，避免额外查询
-        if hasattr(obj, '_prefetched_objects_cache') and 'likes' in obj._prefetched_objects_cache:
-            return len(obj._prefetched_objects_cache['likes'])
-        return obj.likes.count()
+    # get_like_count 方法已被移除
 
 
 # -----------------------------------------------------------------------------
@@ -115,9 +113,7 @@ class CourseDetailSerializer(serializers.ModelSerializer):
     instructor = UserSerializer(read_only=True)
     category = CategorySerializer(read_only=True)
 
-    like_count = serializers.SerializerMethodField()
-    is_liked = serializers.SerializerMethodField()
-    is_favorited = serializers.SerializerMethodField()
+    # like_count, is_liked, is_favorited 字段已被移除
 
     class Meta:
         model = Course
@@ -125,38 +121,19 @@ class CourseDetailSerializer(serializers.ModelSerializer):
             'id',
             'title',
             'description',
-            # 'price', # <-- 【【【已移除】】】
             'created_at',
             'instructor',
             'modules',
             'cover_image',
             'category',
-            'like_count',
-            'is_liked',
-            'is_favorited'
+            # 'like_count',     # <-- 已移除
+            # 'is_liked',       # <-- 已移除
+            # 'is_favorited'    # <-- 已移除
         ]
 
-    def get_like_count(self, obj):
-        # 使用已预取的likes关系，避免额外查询
-        if hasattr(obj, '_prefetched_objects_cache') and 'likes' in obj._prefetched_objects_cache:
-            return len(obj._prefetched_objects_cache['likes'])
-        return obj.likes.count()
-
-    def get_is_liked(self, obj):
-        user = self.context['request'].user
-        if user.is_authenticated:
-            # 使用已预取的likes关系
-            if hasattr(obj, '_prefetched_objects_cache') and 'likes' in obj._prefetched_objects_cache:
-                return any(like.pk == user.pk for like in obj._prefetched_objects_cache['likes'])
-            return obj.likes.filter(pk=user.pk).exists()
-        return False
-
-    def get_is_favorited(self, obj):
-        user = self.context['request'].user
-        if user.is_authenticated:
-            # 优化：使用exists()而不是filter().exists()以利用数据库索引
-            return user.favorited_courses.filter(pk=obj.pk).exists()
-        return False
+    # get_like_count 方法已被移除
+    # get_is_liked 方法已被移除
+    # get_is_favorited 方法已被移除
 
 
 # -----------------------------------------------------------------------------
@@ -199,7 +176,7 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ['id', 'user', 'lesson', 'content', 'created_at']
         read_only_fields = ['user', 'created_at']
-    
+
     def validate_content(self, value):
         """验证评论内容"""
         if not value or not value.strip():

@@ -34,7 +34,7 @@ class IsInstructorOrAdmin(BasePermission):
 
 
 # -----------------------------------------------------------------
-# 课程“视图集合”
+# 课程“视图集合” - 【【【已修改】】】
 # -----------------------------------------------------------------
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all().order_by('-created_at')
@@ -45,9 +45,9 @@ class CourseViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Course.objects.all().order_by('-created_at')
 
-        # 【【【修复 500 错误 / N+1 问题】】】
-        # 预先获取 category, instructor (select_related) 和 likes (prefetch_related)
-        queryset = queryset.select_related('instructor', 'category').prefetch_related('likes')
+        # --- 【【【已修改】】】 ---
+        # 预取 'likes' 已被移除
+        queryset = queryset.select_related('instructor', 'category')
 
         category_slug = self.request.query_params.get('category')
         if category_slug:
@@ -224,7 +224,7 @@ class UserView(RetrieveUpdateAPIView):
 
 
 # -----------------------------------------------------------------
-# 评论、点赞、收藏视图
+# 评论视图 (不变)
 # -----------------------------------------------------------------
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all().order_by('-created_at')
@@ -241,13 +241,11 @@ class CommentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-    # 【【【修复评论数据不完整问题】】】
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
-        # 关键步骤：使用创建的实例，再次序列化以确保嵌套字段被包含
         response_serializer = CommentSerializer(
             serializer.instance,
             context={'request': request}
@@ -257,65 +255,10 @@ class CommentViewSet(viewsets.ModelViewSet):
         return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class ToggleLikeView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, course_id):
-        try:
-            # 使用 prefetch_related 优化查询
-            course = Course.objects.prefetch_related('likes').get(pk=course_id)
-            user = request.user
-
-            # 检查用户是否已点赞
-            is_liked = course.likes.filter(pk=user.pk).exists()
-
-            if is_liked:
-                course.likes.remove(user)
-                liked = False
-            else:
-                course.likes.add(user)
-                liked = True
-
-            # 重新获取点赞数量
-            like_count = course.likes.count()
-
-            return Response(
-                {'liked': liked, 'count': like_count},
-                status=status.HTTP_200_OK
-            )
-        except Course.DoesNotExist:
-            return Response({'detail': '课程不存在'}, status=status.HTTP_404_NOT_FOUND)
-
-
-class ToggleFavoriteView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, course_id):
-        try:
-            course = Course.objects.get(pk=course_id)
-            user = request.user
-
-            if user.favorited_courses.filter(pk=course.pk).exists():
-                user.favorited_courses.remove(course)
-                favorited = False
-            else:
-                user.favorited_courses.add(course)
-                favorited = True
-
-            return Response(
-                {'favorited': favorited},
-                status=status.HTTP_200_OK
-            )
-        except Course.DoesNotExist:
-            return Response({'detail': '课程不存在'}, status=status.HTTP_404_NOT_FOUND)
-
-
-class FavoriteCourseListView(ListAPIView):
-    serializer_class = CourseListSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return self.request.user.favorited_courses.all().order_by('-created_at')
+# --- 【【【已删除】】】 ---
+# ToggleLikeView 已被移除
+# ToggleFavoriteView 已被移除
+# FavoriteCourseListView 已被移除
 
 
 # -----------------------------------------------------------------

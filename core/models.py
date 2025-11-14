@@ -6,7 +6,7 @@ from django.utils.text import slugify
 
 
 # -----------------------------------------------------------------------------
-# 蓝图 1: 自定义用户模型 (CustomUser)
+# 蓝图 1: 自定义用户模型 (CustomUser) - 【【【已修改】】】
 # -----------------------------------------------------------------------------
 class CustomUser(AbstractUser):
     ROLE_STUDENT = 'student'
@@ -25,13 +25,8 @@ class CustomUser(AbstractUser):
     )
     bio = models.TextField(blank=True, verbose_name="个人简介")
 
-    # 收藏 功能
-    favorited_courses = models.ManyToManyField(
-        'Course',  # 使用字符串 'Course' 避免 import 顺序问题
-        blank=True,
-        related_name='favorited_by',
-        verbose_name="收藏的课程"
-    )
+    # --- 【【【已删除】】】 ---
+    # favorited_courses 字段已被移除
 
     def __str__(self):
         return self.username
@@ -63,7 +58,7 @@ class Category(models.Model):
 
 
 # -----------------------------------------------------------------------------
-# 蓝图 3: 课程模型 (Course) - 【【【已修复】】】
+# 蓝图 3: 课程模型 (Course) - 【【【已修改】】】
 # -----------------------------------------------------------------------------
 class Course(models.Model):
     title = models.CharField(max_length=255, verbose_name="课程标题", db_index=True)
@@ -94,15 +89,8 @@ class Course(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # (price 字段已彻底移除, 重复的 Meta 和 likes 也已移除)
-
-    # 点赞功能
-    likes = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        related_name='liked_courses',
-        blank=True,
-        verbose_name="点赞用户"
-    )
+    # --- 【【【已删除】】】 ---
+    # likes 字段已被移除
 
     class Meta:
         ordering = ['-created_at']
