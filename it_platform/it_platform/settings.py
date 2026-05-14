@@ -3,6 +3,7 @@ Django settings for it_platform project.
 """
 
 from pathlib import Path
+from decouple import config
 import os
 
 # BASE_DIR 指向项目根目录
@@ -88,8 +89,12 @@ WSGI_APPLICATION = 'it_platform.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'it_platform_db',
+        'USER': 'root',
+        'PASSWORD': '123456',
+        'HOST': '127.0.0.1',
+        'PORT': '3306',
     }
 }
 
@@ -252,4 +257,4 @@ LOGGING = {
 }
 
 # DeepSeek API 配置
-DEEPSEEK_API_KEY = config('DEEPSEEK_API_KEY', default='sk-0d474a00aef74264886a62bc10ecf100')
+DEEPSEEK_API_KEY = config('DEEPSEEK_API_KEY', default='sk-b5bfffe705754c96b859538b80efbfc6')
